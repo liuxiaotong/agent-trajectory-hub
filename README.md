@@ -28,23 +28,33 @@ Task (JSONL/SWE-bench) → Sandbox (执行) → Recorder (录制) → Reward (�
 
 ### 架构 / Architecture
 
-```
-                  agent-trajectory-hub (编排层 / Orchestrator)
-                            |
-       +--------------------+--------------------+
-       |                    |                    |
-  Task Layer           Exec Layer          Value Layer
-  (任务层)              (执行层)             (价值层)
-       |                    |                    |
-  +----+----+       +------+------+      +------+------+
-  |         |       |      |      |      |      |      |
-TaskSource Recipe  Sandbox Recorder Reward  SFT    DPO   Publish
-(JSONL/    (复用)   (新建)  (新建)   (新建)  Export Export HuggingFace
- SWE-bench)                          |
-                          +----------+----------+
-                          |          |          |
-                       Check      Synth      Label
-                      (data-check)(data-synth)(data-label)
+```mermaid
+graph TD
+    Hub["🎯 agent-trajectory-hub<br/>(编排层 / Orchestrator)"]
+
+    Hub --> Task["📋 Task Layer<br/>任务层"]
+    Hub --> Exec["⚙️ Exec Layer<br/>执行层"]
+    Hub --> Value["💎 Value Layer<br/>价值层"]
+
+    Task --> TaskSource["TaskSource<br/>(JSONL / SWE-bench)"]
+    Task --> Recipe["Recipe<br/>(复用)"]
+
+    Exec --> Sandbox["Sandbox<br/>(agent-sandbox)"]
+    Exec --> Recorder["Recorder<br/>(agent-recorder)"]
+    Exec --> Reward["Reward<br/>(agent-reward)"]
+
+    Value --> SFT["SFT Export"]
+    Value --> DPO["DPO Export"]
+    Value --> Publish["Publish<br/>HuggingFace"]
+
+    Reward --> Check["Check<br/>(data-check)"]
+    Reward --> Synth["Synth<br/>(data-synth)"]
+    Reward --> Label["Label<br/>(data-label)"]
+
+    style Hub fill:#0969da,color:#fff,stroke:#0969da
+    style Task fill:#2da44e,color:#fff,stroke:#2da44e
+    style Exec fill:#bf8700,color:#fff,stroke:#bf8700
+    style Value fill:#8250df,color:#fff,stroke:#8250df
 ```
 
 ### 解决的问题 / Problems Solved
