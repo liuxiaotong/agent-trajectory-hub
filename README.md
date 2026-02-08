@@ -489,31 +489,6 @@ src/trajectoryhub/
 
 ---
 
-## AI Data Pipeline 生态
-
-> 9 个工具覆盖 AI 数据工程全流程，均支持 CLI + MCP，可独立使用也可组合成流水线。
-
-| 层 | 项目 | 说明 | 仓库 |
-|---|---|---|---|
-| 情报 | **AI Dataset Radar** | 数据集竞争情报、趋势分析 | [GitHub](https://github.com/liuxiaotong/ai-dataset-radar) |
-| 分析 | **DataRecipe** | 逆向分析、Schema 提取、成本估算 | [GitHub](https://github.com/liuxiaotong/data-recipe) |
-| 生产 | **DataSynth** | LLM 批量合成、种子数据扩充 | [GitHub](https://github.com/liuxiaotong/data-synth) |
-| 生产 | **DataLabel** | 轻量标注工具、多标注员合并 | [GitHub](https://github.com/liuxiaotong/data-label) |
-| 质检 | **DataCheck** | 规则验证、重复检测、分布分析 | [GitHub](https://github.com/liuxiaotong/data-check) |
-| Agent | **AgentSandbox** | Docker 执行沙箱、轨迹重放 | [GitHub](https://github.com/liuxiaotong/agent-sandbox) |
-| Agent | **AgentRecorder** | 标准化轨迹录制、多框架适配 | [GitHub](https://github.com/liuxiaotong/agent-recorder) |
-| Agent | **AgentReward** | 过程级 Reward、Rubric 多维评估 | [GitHub](https://github.com/liuxiaotong/agent-reward) |
-| 编排 | **TrajectoryHub** | Pipeline 编排、数据集导出 | You are here |
-
-```mermaid
-graph LR
-    A[Radar] --> B[Recipe] --> C[Synth] --> E[Check] --> F[Hub]
-    B --> D[Label] --> E
-    F --> G[Sandbox] --> H[Recorder] --> I[Reward]
-```
-
----
-
 <div align="center">
 <sub>面向 Code Agent 的 RL 环境，产出带过程级 Reward 的执行轨迹数据</sub>
 </div>
