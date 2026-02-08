@@ -1,6 +1,6 @@
 <div align="center">
 
-# Agent Trajectory Hub
+# TrajectoryHub
 
 **Agent 轨迹数据 Pipeline 编排层 - 串联全流程，产出可训练的数据集**
 **Orchestrate the full pipeline: Task -> Sandbox -> Recorder -> Reward -> Export**
@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-3_Tools-purple.svg)](#mcp-server)
 
-[Quick Start](#quick-start) | [Pipeline Flow](#pipeline-flow) | [Export Formats](#export-formats) | [MCP Server](#mcp-server) | [ROADMAP](ROADMAP.md)
+[快速开始](#快速开始--quick-start) · [Pipeline Flow](#pipeline-flow--流水线流程) · [导出格式](#export-formats--导出格式) · [MCP Server](#mcp-server--claude-integration) · [Data Pipeline 生态](#data-pipeline-生态--ecosystem)
 
 </div>
 
@@ -20,7 +20,13 @@
 
 knowlyr 生态的编排层。调用 agent-sandbox、agent-recorder、agent-reward、data-check、data-label 等原子项目，产出训练就绪的数据集。
 
-## Architecture / 架构
+## 核心能力 / Core Capabilities
+
+```
+Task (JSONL/SWE-bench) → Sandbox (执行) → Recorder (录制) → Reward (打分) → Export (SFT/DPO)
+```
+
+### 架构 / Architecture
 
 ```
                   agent-trajectory-hub (编排层 / Orchestrator)
@@ -41,6 +47,15 @@ TaskSource Recipe  Sandbox Recorder Reward  SFT    DPO   Publish
                       (data-check)(data-synth)(data-label)
 ```
 
+### 解决的问题 / Problems Solved
+
+| 痛点 | 传统方案 | TrajectoryHub |
+|------|----------|---------------|
+| **编排复杂** | 手动串联 Sandbox → 录制 → 打分 → 导出 | 一条命令跑完全 Pipeline |
+| **断点恢复** | 失败后从头跑 | Checkpoint 自动恢复 |
+| **格式适配** | 手动转换 SFT / DPO / Benchmark | 内置多格式导出 |
+| **并行调度** | 逐任务串行 | 多 Worker 并行执行 |
+
 ### 项目调用关系 / Project Dependencies
 
 | 原子项目 | PyPI 包名 | 在 Hub 中的角色 |
@@ -51,6 +66,88 @@ TaskSource Recipe  Sandbox Recorder Reward  SFT    DPO   Publish
 | **data-check** | `knowlyr-datacheck` | 轨迹数据质检 (规则验证、重复检测) |
 | **data-label** | `knowlyr-datalabel` | 偏好对的人工标注 + IAA 一致性验证 |
 | **data-synth** | `knowlyr-datasynth` | Reward 模型层的 LLM-as-Judge |
+
+## 安装 / Installation
+
+```bash
+pip install knowlyr-hub
+```
+
+可选依赖：
+
+```bash
+pip install knowlyr-hub[sandbox]    # 沙箱环境
+pip install knowlyr-hub[recorder]   # 轨迹录制
+pip install knowlyr-hub[reward]     # Reward 计算
+pip install knowlyr-hub[check]      # 数据质检
+pip install knowlyr-hub[mcp]        # MCP 服务器
+pip install knowlyr-hub[all]        # 全部功能
+```
+
+## 快速开始 / Quick Start
+
+### CLI 模式 / CLI Mode
+
+```bash
+# 运行完整 Pipeline
+knowlyr-hub run tasks.jsonl -o ./output -f openhands -m claude-sonnet-4-20250514
+
+# 从 checkpoint 恢复
+knowlyr-hub run tasks.jsonl -o ./output --resume ./output/checkpoint.json
+
+# 查看状态
+knowlyr-hub status ./output
+
+# 列出任务
+knowlyr-hub tasks tasks.jsonl --language python --difficulty medium
+```
+
+<details>
+<summary>输出示例</summary>
+
+```
+正在运行 Pipeline...
+  任务源: tasks.jsonl (50 tasks)
+  Agent: openhands / claude-sonnet-4-20250514
+  并行: 4 workers
+  进度: 50/50
+✓ Pipeline 完成
+  轨迹: ./output/trajectories.jsonl (100 条)
+  偏好对: ./output/preferences.jsonl (75 对)
+  耗时: 34m 12s
+```
+
+</details>
+
+### 导出数据集 / Export Datasets
+
+```bash
+# 导出为 SFT 格式
+knowlyr-hub export --format sft -t ./output/trajectories.jsonl -o ./export/sft_train.jsonl
+
+# 导出为 DPO 格式
+knowlyr-hub export --format dpo -t ./output/trajectories.jsonl -p ./output/preferences.jsonl -o ./export/dpo_train.jsonl
+
+# 发布到 HuggingFace
+knowlyr-hub publish -t ./output/trajectories.jsonl --repo-id username/my-dataset --generate-card
+```
+
+<details>
+<summary>输出示例</summary>
+
+```
+正在导出 SFT 格式...
+  输入: ./output/trajectories.jsonl
+  过滤: reward >= 0.5
+  输出: ./export/sft_train.jsonl
+✓ 导出成功
+  数量: 82 条
+  平均 reward: 0.73
+```
+
+</details>
+
+---
 
 ## Pipeline Flow / 流水线流程
 
@@ -74,96 +171,7 @@ TaskSource Recipe  Sandbox Recorder Reward  SFT    DPO   Publish
 5. Export              导出为 SFT / DPO / Benchmark 格式
 ```
 
-## Installation / 安装
-
-```bash
-pip install knowlyr-hub
-```
-
-可选依赖：
-
-```bash
-pip install knowlyr-hub[sandbox]    # 沙箱环境
-pip install knowlyr-hub[recorder]   # 轨迹录制
-pip install knowlyr-hub[reward]     # Reward 计算
-pip install knowlyr-hub[check]      # 数据质检
-pip install knowlyr-hub[mcp]        # MCP 服务器
-pip install knowlyr-hub[all]        # 全部功能
-```
-
-## Quick Start / 快速开始
-
-### CLI
-
-```bash
-# 运行完整 Pipeline
-knowlyr-hub run tasks.jsonl -o ./output -f openhands -m claude-sonnet-4-20250514
-
-# 从 checkpoint 恢复
-knowlyr-hub run tasks.jsonl -o ./output --resume ./output/checkpoint.json
-
-# 查看状态
-knowlyr-hub status ./output
-
-# 列出任务
-knowlyr-hub tasks tasks.jsonl --language python --difficulty medium
-
-# 导出为 SFT 格式
-knowlyr-hub export --format sft -t ./output/trajectories.jsonl -o ./export/sft_train.jsonl
-
-# 导出为 DPO 格式
-knowlyr-hub export --format dpo -t ./output/trajectories.jsonl -p ./output/preferences.jsonl -o ./export/dpo_train.jsonl
-
-# 发布到 HuggingFace
-knowlyr-hub publish -t ./output/trajectories.jsonl --repo-id username/my-dataset --generate-card
-```
-
-### Python API
-
-```python
-from trajectoryhub import Pipeline, PipelineConfig
-from trajectoryhub.config import TaskSource, AgentConfig
-
-config = PipelineConfig(
-    task_source=TaskSource(path="tasks.jsonl"),
-    agents=[
-        AgentConfig(framework="openhands", model="claude-sonnet-4-20250514"),
-        AgentConfig(framework="openhands", model="gpt-4o"),
-    ],
-    output_dir="./output",
-    parallel_workers=4,
-)
-
-pipeline = Pipeline(config)
-result = pipeline.run()
-
-print(f"完成: {result.completed}/{result.total_tasks}")
-print(f"轨迹: {result.trajectories_path}")
-print(f"偏好对: {result.preferences_path}")
-```
-
-### 导出数据集
-
-```python
-from trajectoryhub import DatasetExporter
-
-exporter = DatasetExporter(
-    trajectories_dir="./output/trajectories.jsonl",
-    preferences_dir="./output/preferences.jsonl",
-)
-
-# SFT 格式
-exporter.export_sft("./export/sft_train.jsonl")
-
-# DPO 格式
-exporter.export_dpo("./export/dpo_train.jsonl")
-
-# 评测基准
-exporter.export_benchmark("./export/benchmark.jsonl")
-
-# 生成 Dataset Card
-card = exporter.generate_datacard()
-```
+---
 
 ## Export Formats / 导出格式
 
@@ -215,6 +223,22 @@ card = exporter.generate_datacard()
 }
 ```
 
+---
+
+## 任务管理 / Task Management
+
+```bash
+# 列出任务
+knowlyr-hub tasks tasks.jsonl --language python --difficulty medium
+
+# 查看 Pipeline 状态
+knowlyr-hub status ./output
+```
+
+支持从多种来源加载任务：JSONL 文件、SWE-bench 数据集、自定义 TaskSource。
+
+---
+
 ## MCP Server / Claude Integration
 
 在 Claude Desktop / Claude Code 中直接使用。
@@ -242,9 +266,129 @@ card = exporter.generate_datacard()
 | `export_dataset` | 导出为指定格式 (SFT / DPO / Benchmark / HuggingFace) |
 | `pipeline_status` | 查看 Pipeline 执行状态和进度 |
 
+### 使用示例 / Usage Example
+
+```
+用户: 帮我用 tasks.jsonl 跑一轮 Pipeline，导出 DPO 格式
+
+Claude: [调用 run_pipeline]
+        Pipeline 运行中... 50/50 完成
+
+        [调用 export_dataset]
+        ✓ 数据集已导出:
+        - 输出路径: ./export/dpo_train.jsonl
+        - 偏好对数量: 75
+```
+
 ---
 
-## 命令参考 / Command Reference
+## Data Pipeline 生态 / Ecosystem
+
+TrajectoryHub 是 Data Pipeline 生态的编排层：
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  Data Pipeline 生态                                      │
+├──────────────┬──────────────┬──────────────┬──────────────┬──────────────┬───────────────┤
+│  DataRecipe  │  DataLabel   │  DataSynth   │  DataCheck   │   Sandbox    │   Recorder    │
+│   数据分析    │   数据标注    │   数据合成    │   数据质检    │   代码沙箱    │   轨迹录制    │
+├──────────────┼──────────────┼──────────────┼──────────────┼──────────────┼───────────────┤
+│ · 逆向工程   │ · HTML标注   │ · LLM批量生成 │ · 规则验证   │ · Docker隔离 │ · 交互拦截    │
+│ · Schema提取 │ · 多标注员   │ · 种子扩充    │ · 重复检测   │ · 可复现环境 │ · 标准化格式  │
+│ · 成本估算   │ · IAA计算    │ · 成本追踪    │ · 分布分析   │ · 多框架适配 │ · 过程级记录  │
+│ · 样例生成   │ · 断点续标   │ · 交互/API   │ · 质量报告   │ · 资源管控   │ · 断点续录    │
+└──────────────┴──────────────┴──────────────┴──────────────┴──────────────┴───────────────┘
+                                       ↑
+                          TrajectoryHub = 编排以上所有组件
+```
+
+### 生态项目
+
+| 项目 | 功能 | 仓库 |
+|------|------|------|
+| **AI Dataset Radar** | 数据集竞争情报监控 | [ai-dataset-radar](https://github.com/liuxiaotong/ai-dataset-radar) |
+| **DataRecipe** | 数据集逆向分析 | [data-recipe](https://github.com/liuxiaotong/data-recipe) |
+| **DataSynth** | 数据合成扩充 | [data-synth](https://github.com/liuxiaotong/data-synth) |
+| **DataLabel** | 轻量级标注工具 | [data-label](https://github.com/liuxiaotong/data-label) |
+| **DataCheck** | 数据质量检查 | [data-check](https://github.com/liuxiaotong/data-check) |
+| **TrajectoryHub** | Pipeline 编排层 | You are here |
+| **Agent Sandbox** | 代码执行沙箱 | [agent-sandbox](https://github.com/liuxiaotong/agent-sandbox) |
+| **Agent Recorder** | 轨迹录制 | [agent-recorder](https://github.com/liuxiaotong/agent-recorder) |
+| **Agent Reward** | 过程级 Reward | [agent-reward](https://github.com/liuxiaotong/agent-reward) |
+
+### 端到端工作流 / End-to-end Flow
+
+```bash
+# 1. Radar: 发现高价值数据集
+knowlyr-radar scan --topic code-agent
+
+# 2. DataRecipe: 分析数据集，生成 Schema
+knowlyr-datarecipe deep-analyze tencent/CL-bench -o ./output
+
+# 3. DataSynth: 合成种子任务
+knowlyr-datasynth generate ./output/tencent_CL-bench/ -n 100
+
+# 4. DataLabel: 人工校准种子数据
+knowlyr-datalabel generate ./output/tencent_CL-bench/
+
+# 5. DataCheck: 质量检查
+knowlyr-datacheck validate ./output/tencent_CL-bench/
+
+# 6. TrajectoryHub: 跑 Pipeline，产出训练数据
+knowlyr-hub run tasks.jsonl -o ./output -f openhands -m claude-sonnet-4-20250514
+
+# 7. Export: 导出 SFT / DPO 格式
+knowlyr-hub export --format dpo -t ./output/trajectories.jsonl -o ./export/dpo_train.jsonl
+```
+
+### 九合一 MCP 配置 / Full MCP Config
+
+```json
+{
+  "mcpServers": {
+    "knowlyr-radar": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/ai-dataset-radar", "run", "python", "-m", "radar.mcp_server"]
+    },
+    "knowlyr-datarecipe": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/data-recipe", "run", "knowlyr-datarecipe-mcp"]
+    },
+    "knowlyr-datasynth": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/data-synth", "run", "python", "-m", "datasynth.mcp_server"]
+    },
+    "knowlyr-datalabel": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/data-label", "run", "python", "-m", "datalabel.mcp_server"]
+    },
+    "knowlyr-datacheck": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/data-check", "run", "python", "-m", "datacheck.mcp_server"]
+    },
+    "knowlyr-hub": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/agent-trajectory-hub", "run", "python", "-m", "trajectoryhub.mcp_server"]
+    },
+    "knowlyr-sandbox": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/agent-sandbox", "run", "python", "-m", "sandbox.mcp_server"]
+    },
+    "knowlyr-recorder": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/agent-recorder", "run", "python", "-m", "recorder.mcp_server"]
+    },
+    "knowlyr-reward": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/agent-reward", "run", "python", "-m", "reward.mcp_server"]
+    }
+  }
+}
+```
+
+---
+
+## 命令参考
 
 | 命令 | 功能 |
 |------|------|
@@ -267,7 +411,56 @@ card = exporter.generate_datacard()
 
 ---
 
-## 项目架构 / Project Structure
+## API 使用
+
+```python
+from trajectoryhub import Pipeline, PipelineConfig
+from trajectoryhub.config import TaskSource, AgentConfig
+
+config = PipelineConfig(
+    task_source=TaskSource(path="tasks.jsonl"),
+    agents=[
+        AgentConfig(framework="openhands", model="claude-sonnet-4-20250514"),
+        AgentConfig(framework="openhands", model="gpt-4o"),
+    ],
+    output_dir="./output",
+    parallel_workers=4,
+)
+
+pipeline = Pipeline(config)
+result = pipeline.run()
+
+print(f"完成: {result.completed}/{result.total_tasks}")
+print(f"轨迹: {result.trajectories_path}")
+print(f"偏好对: {result.preferences_path}")
+```
+
+### 导出数据集 / Export API
+
+```python
+from trajectoryhub import DatasetExporter
+
+exporter = DatasetExporter(
+    trajectories_dir="./output/trajectories.jsonl",
+    preferences_dir="./output/preferences.jsonl",
+)
+
+# SFT 格式
+exporter.export_sft("./export/sft_train.jsonl")
+
+# DPO 格式
+exporter.export_dpo("./export/dpo_train.jsonl")
+
+# 评测基准
+exporter.export_benchmark("./export/benchmark.jsonl")
+
+# 生成 Dataset Card
+card = exporter.generate_datacard()
+```
+
+---
+
+## 项目架构
 
 ```
 src/trajectoryhub/
@@ -282,33 +475,31 @@ src/trajectoryhub/
 
 ---
 
-## knowlyr 生态 / Ecosystem
-
-> 覆盖 Agent 轨迹数据全流程，均支持 CLI + MCP，可独立使用也可通过 Hub 编排。
-
-| 项目 | 功能 | PyPI |
-|------|------|------|
-| **Agent Trajectory Hub** | Pipeline 编排层 | `knowlyr-hub` (You are here) |
-| **Agent Sandbox** | 代码执行沙箱 | `knowlyr-sandbox` |
-| **Agent Recorder** | 轨迹录制 | `knowlyr-recorder` |
-| **Agent Reward** | 过程级 Reward | `knowlyr-reward` |
-| **DataCheck** | 数据质检 | `knowlyr-datacheck` |
-| **DataSynth** | 数据合成 | `knowlyr-datasynth` |
-| **DataLabel** | 数据标注 | `knowlyr-datalabel` |
-| **DataRecipe** | 数据集分析 | `knowlyr-datarecipe` |
-| **AI Dataset Radar** | 数据集监控 | `knowlyr-radar` |
-
-```
-Hub (编排) -> Sandbox (执行) -> Recorder (录制) -> Reward (打分) -> Export (导出)
-                                                      |
-                                          Check (质检) + Synth (Judge) + Label (标注)
-```
-
----
-
 ## License
 
 [MIT](LICENSE)
+
+---
+
+## AI Data Pipeline 生态
+
+> 9 个工具覆盖 AI 数据工程全流程，均支持 CLI + MCP，可独立使用也可组合成流水线。
+
+| Tool | Description | Link |
+|------|-------------|------|
+| **AI Dataset Radar** | Competitive intelligence for AI training datasets | [GitHub](https://github.com/liuxiaotong/ai-dataset-radar) |
+| **DataRecipe** | Reverse-engineer datasets into annotation specs & cost models | [GitHub](https://github.com/liuxiaotong/data-recipe) |
+| **DataSynth** | Seed-to-scale synthetic data generation | [GitHub](https://github.com/liuxiaotong/data-synth) |
+| **DataLabel** | Lightweight, serverless HTML labeling tool | [GitHub](https://github.com/liuxiaotong/data-label) |
+| **DataCheck** | Automated quality checks & anomaly detection | [GitHub](https://github.com/liuxiaotong/data-check) |
+| **TrajectoryHub** | Orchestrate full agent trajectory pipeline | You are here |
+| **Agent Sandbox** | Reproducible Docker-based code execution | [GitHub](https://github.com/liuxiaotong/agent-sandbox) |
+| **Agent Recorder** | Standardized agent trajectory recording | [GitHub](https://github.com/liuxiaotong/agent-recorder) |
+| **Agent Reward** | Process-level reward computation | [GitHub](https://github.com/liuxiaotong/agent-reward) |
+
+```
+Radar (发现) → Recipe (分析) → Synth (合成) → Label (标注) → Check (质检) + Hub (编排) → Sandbox (执行) → Recorder (录制) → Reward (打分)
+```
 
 ---
 
