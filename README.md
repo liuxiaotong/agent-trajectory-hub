@@ -303,7 +303,8 @@ graph LR
     Recipe --> Label["🏷️ Label<br/>数据标注"]
     Synth --> Check["✅ Check<br/>数据质检"]
     Label --> Check
-    Check --> Hub["🎯 Hub<br/>编排层"]
+    Check --> Audit["🔬 Audit<br/>模型审计"]
+    Audit --> Hub["🎯 Hub<br/>编排层"]
     Hub --> Sandbox["📦 Sandbox<br/>执行沙箱"]
     Sandbox --> Recorder["📹 Recorder<br/>轨迹录制"]
     Recorder --> Reward["⭐ Reward<br/>过程打分"]
@@ -319,6 +320,7 @@ graph LR
 | 生产 | **DataSynth** | LLM 批量合成、种子数据扩充 | [GitHub](https://github.com/liuxiaotong/data-synth) |
 | 生产 | **DataLabel** | 轻量标注工具、多标注员合并 | [GitHub](https://github.com/liuxiaotong/data-label) |
 | 质检 | **DataCheck** | 规则验证、重复检测、分布分析 | [GitHub](https://github.com/liuxiaotong/data-check) |
+| 质检 | **ModelAudit** | 蒸馏检测、模型指纹、身份验证 | [GitHub](https://github.com/liuxiaotong/model-audit) |
 | Agent | **AgentSandbox** | Docker 执行沙箱、轨迹重放 | [GitHub](https://github.com/liuxiaotong/agent-sandbox) |
 | Agent | **AgentRecorder** | 标准化轨迹录制、多框架适配 | [GitHub](https://github.com/liuxiaotong/agent-recorder) |
 | Agent | **AgentReward** | 过程级 Reward、Rubric 多维评估 | [GitHub](https://github.com/liuxiaotong/agent-reward) |
@@ -349,7 +351,7 @@ knowlyr-hub run tasks.jsonl -o ./output -f openhands -m claude-sonnet-4-20250514
 knowlyr-hub export --format dpo -t ./output/trajectories.jsonl -o ./export/dpo_train.jsonl
 ```
 
-### 九合一 MCP 配置 / Full MCP Config
+### 十合一 MCP 配置 / Full MCP Config
 
 ```json
 {
